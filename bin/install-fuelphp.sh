@@ -2,9 +2,10 @@
 
 # FuelPHP Install Script
 #
-# @author     Kenji Suzuki https://github.com/kenjis
+# @author     Kenji Suzuki <https://github.com/kenjis>
 # @copyright  2011 Kenji Suzuki
 # @license    MIT License http://www.opensource.org/licenses/mit-license.php
+# @link       https://github.com/kenjis/fuelphp-tools
 
 if [ $# -lt 2 ]; then
   echo "Install FuelPHP and Create Application Repository"
@@ -38,4 +39,3 @@ git add .
 git commit -m "FuelPHP $branch Initial Commit"
 
 php oil refine install
-

@@ -5,9 +5,10 @@ namespace Fuel\Tasks;
 /**
 * Generate Task
 *
-* @author     Kenji Suzuki https://github.com/kenjis
+* @author     Kenji Suzuki <https://github.com/kenjis>
 * @copyright  2012 Kenji Suzuki
 * @license    MIT License http://www.opensource.org/licenses/mit-license.php
+* @link       https://github.com/kenjis/fuelphp-tools
 */
 
 class Generate
@@ -97,5 +98,3 @@ EOL;
 		return $list;
 	}
 }
-
-/* End of file tasks/generate.php */
