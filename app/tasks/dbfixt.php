@@ -6,15 +6,16 @@ use Fuel\Core\Cli;
 use Fuel\Core\DB;
 use Fuel\Core\DBUtil;
 use Fuel\Core\Format;
+use Fuel\Core\Mongo_Db;
 
 /**
-* Dbfixt Task
-*
-* @author     Kenji Suzuki <https://github.com/kenjis>
-* @copyright  2011 Kenji Suzuki
-* @license    MIT License http://www.opensource.org/licenses/mit-license.php
-* @link       https://github.com/kenjis/fuelphp-tools
-*/
+ * Dbfixt Task
+ *
+ * @author     Kenji Suzuki <https://github.com/kenjis>
+ * @copyright  2011 Kenji Suzuki
+ * @license    MIT License http://www.opensource.org/licenses/mit-license.php
+ * @link       https://github.com/kenjis/fuelphp-tools
+ */
 class Dbfixt
 {
 	/**
@@ -62,16 +63,20 @@ HELP;
 		$num = Cli::option('n') ? (int) Cli::option('n') : 5;
 		
 		$dir = Cli::option('o');
-		if (is_null($dir)) {
+		if (is_null($dir))
+		{
 			$dir = APPPATH . 'tests/fixture';
 			if ( ! is_dir($dir))
 			{
 				mkdir($dir);
 			}
 		}
-		else if ( ! is_dir($dir))
+		else
 		{
-			return Cli::color('No such directory: ' . $dir, 'red');
+			if ( ! is_dir($dir))
+			{
+				return Cli::color('No such directory: ' . $dir, 'red');
+			}
 		}
 		
 		$args = func_get_args();
@@ -80,24 +85,36 @@ HELP;
 		{
 			if (DBUtil::table_exists($table))
 			{
-				$result =  DB::select('*')->from($table)->limit($num)->execute();
+				$result = DB::select('*')->from($table)->limit($num)->execute();
 				$data = $result->as_array();
+
+				static::setToYaml($dir, $data, $table);
+			}
+			elseif (Mongo_Db::instance()->get_collection($table))
+			{
+				$mongo = Mongo_Db::instance();
+				$data = $mongo->limit($num)->get($table);
 				
-				$file = $dir . '/' . $table . '_fixt.yml';
-				$data = Format::forge($data)->to_yaml();
-				
-				if (file_exists($file))
-				{
-					rename($file, $file . '.old');
-					echo 'Backed-up: ' . $file . PHP_EOL;
-				}
-				file_put_contents($file, $data);
-				echo '  Created: ' . $file . PHP_EOL;
+				static::setToYaml($dir, $data, $table);
 			}
 			else
 			{
 				echo Cli::color('No such table: ' . $table, 'red') . PHP_EOL;
 			}
 		}
+	}
+
+	public static function setToYaml($dir, $data, $table)
+	{
+		$file = $dir . '/' . $table . '_fixt.yml';
+		$data = Format::forge($data)->to_yaml();
+		
+		if (file_exists($file))
+		{
+			rename($file, $file . '.old');
+			echo 'Backed-up: ' . $file . PHP_EOL;
+		}
+		file_put_contents($file, $data);
+		echo '  Created: ' . $file . PHP_EOL;
 	}
 }
