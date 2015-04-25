@@ -13,7 +13,7 @@ namespace Fuel\Tasks;
 
 class Generate
 {
-	static $class_definition = '';
+	static $class_definitions = array();
 	
 	public static function run()
 	{
@@ -25,22 +25,35 @@ EOL;
 	
 	public static function autocomplete()
 	{
-		$filelist = \File::read_dir(COREPATH . 'classes');
-		$filelist = static::convert_filelist($filelist);
+		$path = COREPATH . 'classes/';
+		$filelist = \File::read_dir($path);
+		$filelist = static::convert_filelist($filelist, $path);
+		
+		$path = PKGPATH . 'auth/classes/';
+		$filelist = \File::read_dir($path);
+		$filelist = static::convert_filelist($filelist, $path);
+		
+		$path = PKGPATH . 'email/classes/';
+		$filelist = \File::read_dir($path);
+		$filelist = static::convert_filelist($filelist, $path);
+		
+		$path = PKGPATH . 'parser/classes/';
+		$filelist = \File::read_dir($path);
+		$filelist = static::convert_filelist($filelist, $path);
 		
 		static::generate_class_definition($filelist);
 		
-		static::$class_definition = '<?php' . "\n\n" . static::$class_definition;
+		$output = '<?php' . "\n\n" . implode("", static::$class_definitions);
 		$file = APPPATH . '_autocomplete.php';
-		$ret = file_put_contents($file, static::$class_definition);
+		$ret = file_put_contents($file, $output);
 		
 		if ($ret === false)
 		{
-			echo 'Can\'t write to ' . $file;
+			echo 'Can\'t write to ' . $file . PHP_EOL;
 		}
 		else
 		{
-			echo $file . ' was created.';
+			echo $file . ' was created.'. PHP_EOL;
 		}
 	}
 	
@@ -49,24 +62,35 @@ EOL;
 		foreach ($filelist as $file)
 		{
 			//echo "$file\n";
-			$lines = file(COREPATH . 'classes/' . $file);
+			$lines = file($file);
+			$namespace = '';
 			
 			foreach ($lines as $line)
 			{
-				if (preg_match('/^class (\w+)/', $line, $matches))
+				if (preg_match('/^namespace (\S+);/', $line, $matches))
+				{
+					$namespace = $matches[1];
+				}
+				else if (preg_match('/^class (\w+)/', $line, $matches))
 				{
 					//var_dump($matches);
 					$class_name = $matches[1];
-					static::$class_definition .= 'class ' . $class_name;
-					static::$class_definition .=  ' extends Fuel\\Core\\' . $class_name;
-					static::$class_definition .=  ' {}' . "\n";
+					// don't override. use core class
+					if (! isset(static::$class_definitions[$class_name])) {
+						static::$class_definitions[$class_name] = 'class ' . $class_name
+							. ' extends ' . $namespace . '\\' . $class_name
+							. ' {}' . "\n";
+					}
 				}
 				else if (preg_match('/^abstract class (\w+)/', $line, $matches))
 				{
 					$class_name = $matches[1];
-					static::$class_definition .= 'abstract class ' . $class_name;
-					static::$class_definition .=  ' extends Fuel\\Core\\' . $class_name;
-					static::$class_definition .=  ' {}' . "\n";
+					// don't override. use core class
+					if (! isset(static::$class_definitions[$class_name])) {
+						static::$class_definitions[$class_name] = 'abstract class ' . $class_name
+							. ' extends ' . $namespace . '\\' . $class_name
+							. ' {}' . "\n";
+					}
 				}
 			}
 		}
@@ -81,6 +105,7 @@ EOL;
 	*/
 	private static function convert_filelist($arr, $dir = '')
 	{
+		// save previous list
 		static $list = array();
 	
 		foreach ($arr as $key => $val)
