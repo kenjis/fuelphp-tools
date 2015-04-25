@@ -26,20 +26,16 @@ EOL;
 	public static function autocomplete()
 	{
 		$path = COREPATH . 'classes/';
-		$filelist = \File::read_dir($path);
-		$filelist = static::convert_filelist($filelist, $path);
+		static::convert_filelist(\File::read_dir($path), $path);
 		
 		$path = PKGPATH . 'auth/classes/';
-		$filelist = \File::read_dir($path);
-		$filelist = static::convert_filelist($filelist, $path);
+		static::convert_filelist(\File::read_dir($path), $path);
 		
 		$path = PKGPATH . 'email/classes/';
-		$filelist = \File::read_dir($path);
-		$filelist = static::convert_filelist($filelist, $path);
+		static::convert_filelist(\File::read_dir($path), $path);
 		
 		$path = PKGPATH . 'parser/classes/';
-		$filelist = \File::read_dir($path);
-		$filelist = static::convert_filelist($filelist, $path);
+		$filelist = static::convert_filelist(\File::read_dir($path), $path);
 		
 		static::generate_class_definition($filelist);
 		
