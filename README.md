@@ -8,3 +8,4 @@
 
 * `app/tasks/dbfixt.php` ... Database fixture
 * `app/tasks/generate.php` ... Generate PHP file for IDE's auto completion
+* `app/tasks/route.php` ... Show routes
