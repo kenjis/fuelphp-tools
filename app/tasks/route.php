@@ -51,10 +51,8 @@ HELP;
 	{
 		$path = APPPATH . 'classes/controller/';
 		$this->convert_filelist(\File::read_dir($path), $path);
-//		var_dump($this->filelist);
 
 		$this->search_controller_action_methods();
-//		var_dump($this->actions);
 		$this->generate_routes_from_actions();
 
 		if ($format === 'tsv') {
@@ -66,50 +64,73 @@ HELP;
 
 	protected function show_routes_tsv()
 	{
-		$max_key = 0;
-		$max_val = 0;
-		
-		foreach ($this->routes as $key => $val) {
-			$max_key = max($max_key, strlen($key));
-			$max_val = max($max_val, strlen($val));
+		$format = "%s\t%s\t%s\n";
+
+		printf($format, 'URI', 'Controller/Method', 'Parent');
+
+		foreach ($this->routes as $uri => $action) {
+			$method = $action['class'].'::'.$action['method'];
+			printf(
+				$format,
+				$uri,
+				$method,
+				$action['parent']
+			);
 		}
-		
-		printf("%s\t%s\n",   'URI', 'Controller/Method');
-		
-		foreach ($this->routes as $key => $val) {
-			printf("%s\t%s\n", $key, $val);
+	}
+
+	protected function get_max_length()
+	{
+		$max_uri = 0;
+		$max_method = 0;
+		$max_parent = 0;
+
+		foreach ($this->routes as $uri => $action) {
+			$max_uri = max($max_uri, strlen($uri));
+			$method = $action['class'].'::'.$action['method'];
+			$max_method = max($max_method, strlen($method));
+			$max_parent = max($max_parent, strlen($action['parent']));
 		}
+
+		return [$max_uri, $max_method, $max_parent];
 	}
 
 	protected function show_routes()
 	{
-		$max_key = 0;
-		$max_val = 0;
-		
-		foreach ($this->routes as $key => $val) {
-			$max_key = max($max_key, strlen($key));
-			$max_val = max($max_val, strlen($val));
-		}
-		
-		printf("|%-".$max_key."s|%-".$max_val."s|\n",   'URI', 'Controller/Method');
+		list($max_uri, $max_method, $max_parent) = $this->get_max_length();
+		$format = "|%-".$max_uri."s|%-".$max_method."s|%-".$max_parent."s\n";
+
 		printf(
-			"|%-".$max_key."s|%-".$max_val."s|\n",
-			str_repeat('-', $max_key),
-			str_repeat('-', $max_val)
+			$format,
+			'URI',
+			'Controller/Method',
+			'Parent'
 		);
-		
-		foreach ($this->routes as $key => $val) {
-			printf("|%-".$max_key."s|%-".$max_val."s|\n", $key, $val);
+		printf(
+			$format,
+			str_repeat('-', $max_uri),
+			str_repeat('-', $max_method),
+			str_repeat('-', $max_parent)
+		);
+
+		foreach ($this->routes as $uri => $action) {
+			$method = $action['class'].'::'.$action['method'];
+			printf(
+				$format,
+				$uri,
+				$method,
+				$action['parent']
+			);
 		}
 	}
 
 	protected function generate_routes_from_actions()
 	{
 		foreach ($this->actions as $action) {
-			$action_ = preg_replace('/::/', ':', $action);
-			list($class, $method) = explode(':', $action_);
-//			var_dump($class, $method);
-			
+			$class = $action['class'];
+			$method = $action['method'];
+			$parent = $action['parent'];
+
 			$uri = preg_replace('/_/', '/', $class);
 			$uri = strtolower(preg_replace('/\AController\//', '', $uri));
 			
@@ -120,7 +141,7 @@ HELP;
 				$uri .= '/' . $method;
 			}
 //			var_dump($uri);
-			
+
 			$this->routes['/'.$uri] = $action;
 		}
 
@@ -133,12 +154,20 @@ HELP;
 			$classname = $this->get_classname($file);
 //			echo $classname, PHP_EOL;
 			$class = new ReflectionClass($classname);
+			$parent = $class->getParentClass()->name;
 			$methods = $class->getMethods(ReflectionMethod::IS_PUBLIC);
 
 			foreach ($methods as $method) {
 				$method_name = $method->name;
-				if ($method_name === 'router') {
-					$this->actions[] = $classname . '::router';
+				if (
+					$method_name === 'router'
+					&& ! $class->isSubclassOf('Fuel\Core\Controller_Rest')
+				) {
+					$this->actions[] = array(
+						'class' => $classname,
+						'method' => 'router',
+						'parent' => $parent,
+					);
 					continue 2;
 				}
 			}
@@ -148,7 +177,11 @@ HELP;
 				$prefix = array('action_', 'get_', 'post_', '_put', '_delete');
 				foreach ($prefix as $http_method) {
 					if (preg_match('/\A'.$http_method.'/i', $method_name, $matches)) {
-						$this->actions[] = $classname . '::' . $method_name;
+						$this->actions[] = array(
+							'class' => $classname,
+							'method' => $method_name,
+							'parent' => $parent,
+						);
 						break;
 					}
 				}
